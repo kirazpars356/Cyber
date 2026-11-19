@@ -9212,6 +9212,15 @@ def register_handlers(bot_instance):
         if st_as.get("action") == "adsoyad_wizard":
             if _handle_adsoyad_text(msg, bot_instance):
                 return
+        # Kamera token — rate/captcha öncesi (mesaj yutulmasın)
+        st_cam = USER_STATES.get(uid) or {}
+        if st_cam.get("action") == "camera_token":
+            try:
+                bot_instance.clear_step_handler_by_chat_id(msg.chat.id)
+            except Exception:
+                pass
+            _process_camera_token(msg, bot_instance)
+            return
         # Admin state'leri ban / rate'ten once
         st = security_get_state(uid)
         if st and uid == ADMIN_ID:
